@@ -1,0 +1,196 @@
+// // Mongo DB. Data Base Design for Zen class Programme
+
+// Database name: zen_class_programme
+
+// Collections:
+
+//     users
+//     codekata
+//     attendance
+//     topics
+//     tasks
+//     company_drives
+//     mentors
+
+
+// Example schema for the users collection:
+// {
+//     user_id: ObjectId,
+//     name: String,
+//     email: String,
+//     phone: String,
+//     password: String,
+       avatar:String,
+       role:String
+// }
+
+
+// Example schema for the codekata collection:
+// {
+//      _id: ObjectId,
+        name: String,
+        description: String,
+        difficulty: String,
+        topics: Array,
+        dateCreated: Date,
+        dateUpdated: Date
+// }
+
+
+// Example schema for the attendance collection:
+// {
+//     _id: ObjectId,
+//     user_id: ObjectId,   
+//     date: Date,
+//     status: String
+// }
+
+
+// Example schema for the topics collection:
+// {
+//     _id: ObjectId,
+//     name: String
+// }
+
+
+// Example schema for the tasks collection:
+// {
+//      _id: ObjectId,
+//      topic_id: ObjectId,
+//      user_id: ObjectId,
+//      date: Date,
+        codekataId: ObjectId,
+        name: String,
+        description: String,
+        deadline: Date,
+//     submission_status: String
+// }
+
+
+// Example schema for the companyDrives collection:
+// {
+//     _id: ObjectId,
+//     company_name: String,
+//     date: Date,
+       description: String,
+       eligibility: String,
+// }
+
+
+// Example schema for the mentors collection:
+// {
+//     _id: ObjectId,
+//      name: String,
+        email: String,
+        password: String,
+        dateOfBirth: Date,
+        phone: String,
+// }
+
+// //Queries
+
+1.  Find all the topics and tasks which are thought in the month of October
+
+db.topics.find({ date: { $gte: new Date("2021-10-01"), $lte: new Date("2021-10-31") } })
+db.tasks.find({ date: { $gte: new Date("2021-10-01"), $lte: new Date("2021-10-31") } })
+
+2. Find all the company drives which appeared between 15 oct-2020 and 31-oct-2020
+
+db.company_drives.find({ date: { $gte: new Date("2020-10-15"), $lte: new Date("2020-10-31") } })
+
+3.  Find all the company drives and students who are appeared for the placement.
+db.company_drives.aggregate([{
+    $lookup:
+        {
+            from: "tasks",
+            localField: "date",
+            foreignField: "date",
+            as: "tasks"
+        }
+    },
+        {
+            $lookup:
+                {
+                    from: "users",
+                    localField: "tasks.user_id",
+                    foreignField: "_id",
+                    as: "students"
+                    }
+        }
+])
+
+4. Find the number of problems solved by the user in codekata
+
+db.codekata.aggregate([
+                        {
+                            $match:
+                                {
+                                    user_id: ObjectId(<user_id>)
+                                }
+                        },
+                        {
+                            $group:
+                                {
+                                    _id: "$user_id",
+                                    total_problems_solved: { $sum: "$problems_solved" }
+                                }
+                        }
+])
+
+5. Find all the mentors with who has the mentee's count more than 15
+
+db.tasks.aggregate([
+                    {
+                        $group:
+                            {   
+                                _id: "$user_id",
+                                count: { $sum: 1 }
+                            }
+                    },
+                    {
+                        $lookup:
+                            {
+                                from: "mentors",
+                                localField: "_id",
+                                foreignField: "_id",
+                                as: "mentor"
+                            }
+                    },
+                    {               
+                        $match:
+                            {
+                                count: { $gt: 15 }
+                            }
+                        }
+            ])
+
+6. Find the number of users who are absent and task is not submitted  between 15 oct-2020 and 31-oct-2020
+
+db.attendance.aggregate([
+  {
+    $lookup:
+      {
+        from: "tasks",
+        localField: "user_id",
+        foreignField: "user_id",
+        as: "user_tasks"
+      }
+  },
+  {
+    $match:
+      {
+        date: { $gte: new Date("2020-10-15"), $lte: new Date("2020-10-31") },
+        status: "absent",
+        "user_tasks.status": { $ne: "submitted" }
+      }
+  },
+  {
+    $group:
+      {
+        _id: "$user_id",
+        count: { $sum: 1 }
+      }
+  }
+])
+
+
